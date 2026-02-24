@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz Leaderboard Sci Master</title>
-
+<link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <style>
@@ -61,13 +61,13 @@ border-radius:20px;
 padding:20px;
 margin-top:20px;
 transition:0.3s;
-overflow-x:auto; /* make table scrollable */
+overflow-x:auto;
 }
 table{
 width:100%;
 border-collapse:collapse;
 backdrop-filter:blur(10px);
-min-width:500px; /* allow horizontal scroll on mobile */
+min-width:500px;
 }
 th, td{
 padding:10px 12px;
@@ -85,8 +85,6 @@ border-radius:10px;
 tr:hover{
 background:rgba(255,255,255,0.1);
 }
-
-/* Animated Medals */
 .medal{
 font-size:16px;
 display:inline-block;
@@ -109,13 +107,43 @@ to{transform:translateY(-5px);}
 50%{opacity:1; transform:scale(1.05);}
 100%{opacity:0.6; transform:scale(1);}
 }
-
-/* Responsive adjustments */
 @media(max-width:600px){
 header{font-size:18px;}
 th, td{padding:8px 10px; font-size:12px;}
 .card{padding:15px;}
 .medal{font-size:14px;}
+}
+
+/* Glass Alert Modal */
+#glassAlert{
+position:fixed; top:0; left:0;
+width:100%; height:100%;
+background:rgba(0,0,0,0.3);
+backdrop-filter: blur(5px);
+display:none;
+align-items:center; justify-content:center;
+z-index:9999;
+}
+#glassAlert div{
+background: rgba(255,255,255,0.15);
+backdrop-filter: blur(15px);
+border-radius:20px;
+padding:25px 30px;
+max-width:300px;
+text-align:center;
+color:#fff;
+font-family:Segoe UI, sans-serif;
+box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+#glassAlert button{
+padding:8px 18px;
+border:none;
+border-radius:15px;
+background: #0072ff;
+color:white;
+font-weight:bold;
+cursor:pointer;
+transition:0.3s;
 }
 </style>
 </head>
@@ -124,7 +152,7 @@ th, td{padding:8px 10px; font-size:12px;}
 <header>
 Quiz Leaderboard
 <div class="toggle" onclick="toggleMode()">
-  <i id="modeIcon" class="fa-solid fa-sun"></i>
+<i id="modeIcon" class="fa-solid fa-sun"></i>
 </div>
 </header>
 
@@ -146,18 +174,26 @@ Quiz Leaderboard
 </div>
 </div>
 
+<!-- Glass Alert Modal -->
+<div id="glassAlert">
+  <div>
+    <p id="glassAlertMsg" style="margin-bottom:20px; font-size:16px;">Alert Message</p>
+    <button id="glassAlertBtn">OK</button>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCTfQQHRjOf361iehJWd6Ao4on8yReT1l4",
-  authDomain: "scimasterquiz.firebaseapp.com",
-  projectId: "scimasterquiz",
-  storageBucket: "scimasterquiz.firebasestorage.app",
-  messagingSenderId: "234379811433",
-  appId: "1:234379811433:web:c81613ba47357caefca0f8",
-  measurementId: "G-TTY3CYQWSC"
+apiKey: "AIzaSyCTfQQHRjOf361iehJWd6Ao4on8yReT1l4",
+authDomain: "scimasterquiz.firebaseapp.com",
+projectId: "scimasterquiz",
+storageBucket: "scimasterquiz.firebasestorage.app",
+messagingSenderId: "234379811433",
+appId: "1:234379811433:web:c81613ba47357caefca0f8",
+measurementId: "G-TTY3CYQWSC"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -166,47 +202,85 @@ const db = getFirestore(app);
 const leaderboardTable = document.querySelector("#leaderboardTable tbody");
 
 function updateLeaderboard(){
-  const participantsRef = collection(db,"participants");
-  const q = query(participantsRef, orderBy("score","desc"));
+const participantsRef = collection(db,"participants");
+const q = query(participantsRef, orderBy("score","desc"));
 
-  onSnapshot(q, snap => {
-    let html = "";
-    let rank = 1;
-    snap.forEach(doc => {
-      const data = doc.data();
-      let medal = "";
-      if(rank===1) medal = '<span class="medal gold">🥇</span>';
-      else if(rank===2) medal = '<span class="medal silver">🥈</span>';
-      else if(rank===3) medal = '<span class="medal bronze">🥉</span>';
-      else medal = '<span class="glow">✨</span>';
-      
-      const [name, school] = data.key.split(" : ");
-      html += `<tr>
-        <td>${medal} ${rank}</td>
-        <td>${name}</td>
-        <td>${school}</td>
-        <td>${data.score}</td>
-      </tr>`;
-      rank++;
-    });
-    leaderboardTable.innerHTML = html;
-  });
+onSnapshot(q, snap => {
+let html = "";
+let rank = 1;
+snap.forEach(doc => {
+const data = doc.data();
+let medal = "";
+if(rank===1) medal = '<span class="medal gold">🥇</span>';
+else if(rank===2) medal = '<span class="medal silver">🥈</span>';
+else if(rank===3) medal = '<span class="medal bronze">🥉</span>';
+else medal = '<span class="glow">✨</span>';
+
+const [name, school] = data.key.split(" : ");
+html += `<tr>
+<td>${medal} ${rank}</td>
+<td>${name}</td>
+<td>${school}</td>
+<td>${data.score}</td>
+</tr>`;
+rank++;
+});
+leaderboardTable.innerHTML = html;
+});
 }
 
 updateLeaderboard();
 
 // Toggle Mode
 window.toggleMode = function(){
-  document.body.classList.toggle("dark");
-  const icon = document.getElementById("modeIcon");
-  if(document.body.classList.contains("dark")){
-    icon.classList.remove("fa-sun");
-    icon.classList.add("fa-moon");
-  } else {
-    icon.classList.remove("fa-moon");
-    icon.classList.add("fa-sun");
-  }
+document.body.classList.toggle("dark");
+const icon = document.getElementById("modeIcon");
+if(document.body.classList.contains("dark")){
+icon.classList.remove("fa-sun");
+icon.classList.add("fa-moon");
+} else {
+icon.classList.remove("fa-moon");
+icon.classList.add("fa-sun");
 }
+}
+
+// Glass Alert Functions
+const glassAlert = document.getElementById('glassAlert');
+const glassAlertMsg = document.getElementById('glassAlertMsg');
+document.getElementById('glassAlertBtn').addEventListener('click', () => {
+  glassAlert.style.display = 'none';
+});
+function showGlassAlert(msg){
+  glassAlertMsg.textContent = msg;
+  glassAlert.style.display = 'flex';
+}
+
+// Right Click Disable
+document.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  showGlassAlert("Right click is disabled on this page!");
+});
+
+// DevTools Detection
+let devtoolsOpen = false;
+setInterval(() => {
+  const widthThreshold = window.outerWidth - window.innerWidth > 160;
+  const heightThreshold = window.outerHeight - window.innerHeight > 160;
+  if(widthThreshold || heightThreshold){
+    if(!devtoolsOpen){
+      devtoolsOpen = true;
+      showGlassAlert("Developer Tools are blocked!");
+    }
+  } else devtoolsOpen = false;
+}, 1000);
+
+// Keyboard Shortcuts Disable
+document.addEventListener('keydown', e => {
+  if(e.key === "F12") e.preventDefault();
+  if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") e.preventDefault();
+  if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "j") e.preventDefault();
+  if(e.ctrlKey && e.key.toLowerCase() === "u") e.preventDefault();
+});
 </script>
 
 </body>
