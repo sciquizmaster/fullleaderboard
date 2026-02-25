@@ -15,6 +15,7 @@
 --text:#111;
 --accent:#0072ff;
 --header:#111;
+--highlight:#fff4a3;
 }
 body.dark{
 --bg:#0f172a;
@@ -22,6 +23,7 @@ body.dark{
 --text:#fff;
 --accent:#00c6ff;
 --header:#fff;
+--highlight:#fffa65;
 }
 body{
 margin:0;
@@ -39,7 +41,6 @@ font-size:22px;
 font-weight:bold;
 color:var(--header);
 backdrop-filter: blur(5px);
-flex-wrap:wrap;
 }
 .toggle{
 cursor:pointer;
@@ -50,7 +51,6 @@ color:white;
 display:flex;
 align-items:center;
 justify-content:center;
-margin-top:5px;
 }
 .container{
 max-width:1000px;
@@ -90,6 +90,10 @@ background:rgba(255,255,255,0.15);
 backdrop-filter:blur(5px);
 border-radius:10px;
 }
+.currentUser{
+background:var(--highlight) !important;
+font-weight:bold;
+}
 .medal{
 font-size:16px;
 display:inline-block;
@@ -113,15 +117,12 @@ to{transform:translateY(-5px);}
 50%{opacity:1; transform:scale(1.05);}
 100%{opacity:0.6; transform:scale(1);}
 }
-
-/* ===== MOBILE RESPONSIVE ===== */
 @media(max-width:600px){
-header{font-size:18px; padding:10px 15px;}
-.toggle{margin-top:8px; font-size:14px;}
+header{font-size:18px;}
 th, td{padding:8px 10px; font-size:12px;}
 .card{padding:15px;}
 .medal{font-size:14px;}
-table{min-width:100%;} /* horizontal scroll on small screens */
+table{min-width:100%;}
 }
 </style>
 </head>
@@ -167,7 +168,9 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const leaderboardTable = document.querySelector("#leaderboardTable tbody");
 
-// Update Leaderboard
+// Enter your current user key here (name : school)
+const currentUserKey = "Alice : ABC School"; // <-- change dynamically if needed
+
 function updateLeaderboard(){
   const participantsRef = collection(db,"participants");
   const q = query(participantsRef, orderBy("score","desc"), orderBy("timestamp","asc"));
@@ -199,7 +202,9 @@ function updateLeaderboard(){
       else if(rank === 3){ medal = '🥉'; medalClick = "onclick='confetti({particleCount:150,spread:70,origin:{y:0.6}})'"; }
       else medal = '✨';
 
-      html += `<tr>
+      const highlightClass = (data.key === currentUserKey) ? "currentUser" : "";
+
+      html += `<tr class="${highlightClass}">
 <td><span class="medal" ${medalClick}>${medal} ${rank}</span></td>
 <td>${name}</td>
 <td>${school}</td>
