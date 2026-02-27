@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Leaderboard Sci Master</title>
+<link rel="icon" type="image/png" href="cropped_circle_image.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+:root{
+  --bg:#e0e5ec;
+  --card:rgba(255,255,255,0.25);
+  --text:#111;
+  --accent:#0072ff;
+  --header:#111;
+  --highlight:#fff4a3;
+}
+body.dark{
+  --bg:#0f172a;
+  --card:rgba(255,255,255,0.05);
+  --text:#fff;
+  --accent:#00c6ff;
+  --header:#fff;
+  --highlight:#fffa65;
+}
+body{
+  margin:0;
+  font-family:Segoe UI, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  transition:0.3s;
+}
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:15px 20px;
+  font-size:22px;
+  font-weight:bold;
+  color:var(--header);
+  backdrop-filter: blur(5px);
+}
+.toggle{
+  cursor:pointer;
+  padding:6px 12px;
+  border-radius:20px;
+  background:var(--accent);
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.container{
+  max-width:1000px;
+  margin:auto;
+  padding:15px;
+}
+.card{
+  backdrop-filter:blur(15px);
+  background:var(--card);
+  border-radius:20px;
+  padding:20px;
+  margin-top:20px;
+  transition:0.3s;
+  overflow-x:auto;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:600px;
+}
+th, td{
+  padding:12px 15px;
+  text-align:left;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  color:var(--header);
+  font-size:14px;
+  transition:0.2s;
+}
+th{
+  background:rgba(255,255,255,0.2);
+  color:var(--header);
+  backdrop-filter:blur(10px);
+  border-radius:10px;
+}
+tr:hover{
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(5px);
+  border-radius:10px;
+}
+.currentUser{
+  background:var(--highlight) !important;
+  font-weight:bold;
+}
+.medal{
+  font-size:16px;
+  display:inline-block;
+  animation:bounce 1s infinite alternate;
+  cursor:pointer;
+}
+.gold{color:#FFD700;}
+.silver{color:#C0C0C0;}
+.bronze{color:#cd7f32;}
+.alert-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  display:flex;justify-content:center;align-items:center;opacity:0;pointer-events:none;transition:opacity 0.3s;z-index:9999;
+}
+.alert-overlay.active{opacity:1;pointer-events:auto;}
+.alert-box{
+  background:rgba(255,255,255,0.2);backdrop-filter:blur(15px);padding:25px 35px;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,0.3);
+  color:#000000;font-weight:bold;font-size:20px;text-align:center;transform:translateY(-20px);transition:0.3s;
+}
+@keyframes bounce{
+  from{transform:translateY(0);}
+  to{transform:translateY(-5px);}
+}
+@media(max-width:600px){
+  header{font-size:18px;}
+  th, td{padding:8px 10px; font-size:12px;}
+  .card{padding:15px;}
+  table{min-width:100%;}
+  .medal{font-size:14px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+Leaderboard
+<div class="toggle" onclick="toggleMode()">
+<i id="modeIcon" class="fa-solid fa-sun"></i>
+</div>
+</header>
+
+<div class="container">
+<div class="card">
+<h3 style="text-align:center;margin-bottom:15px;">Daily Top 10 (6:00 PM - 6:30 PM)</h3>
+<table id="leaderboardTable">
+<thead>
+<tr>
+<th>Rank</th>
+<th>Name</th>
+<th>School</th>
+<th>Score</th>
+<th>Time</th>
+</tr>
+</thead>
+<tbody>
+<tr><td colspan="5" style="text-align:center;">Leaderboard available at 6 PM only (for 30 min)</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="customAlert" class="alert-overlay">
+<div class="alert-box"><p id="alertMessage">⚠️ Action Blocked!</p></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, doc, getDoc, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCTfQQHRjOf361iehJWd6Ao4on8yReT1l4",
+  authDomain: "scimasterquiz.firebaseapp.com",
+  projectId: "scimasterquiz"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const leaderboardTable = document.querySelector("#leaderboardTable tbody");
+
+// Current user key
+const currentUserKey = "Alice : ABC School";
+
+// Toggle mode
+window.toggleMode = function(){
+  document.body.classList.toggle("dark");
+  const icon = document.getElementById("modeIcon");
+  if(document.body.classList.contains("dark")){
+    icon.classList.replace("fa-sun","fa-moon");
+  } else {
+    icon.classList.replace("fa-moon","fa-sun");
+  }
+}
+
+// Show alert
+function showAlert(msg){
+  const alertOverlay = document.getElementById("customAlert");
+  document.getElementById("alertMessage").innerText = msg;
+  alertOverlay.classList.add("active");
+  setTimeout(()=>alertOverlay.classList.remove("active"),2000);
+}
+
+// User limit check
+async function checkUserLimit(){
+  const participantsRef = collection(db,"participants");
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const q = query(participantsRef, where("timestamp", ">=", startOfDay.getTime()));
+  const snap = await getDocs(q);
+  if(snap.size >= 5000){
+    showAlert("❌ Daily limit reached: 5000 users already participated!");
+    return false;
+  }
+  return true;
+}
+
+// Load Top10 leaderboard 6-6:30 PM
+async function updateLeaderboardWindow(){
+  const now = new Date();
+  const hour = now.getHours();
+  const minutes = now.getMinutes();
+
+  if(hour === 18 && minutes < 30){
+    const docSnap = await getDoc(doc(db,"top10","daily"));
+    if(docSnap.exists()){
+      const data = docSnap.data().top10;
+      renderLeaderboard(data);
+    } else {
+      leaderboardTable.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No leaderboard yet!</td></tr>";
+    }
+  } else {
+    leaderboardTable.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Leaderboard available at 6 PM only (for 30 min)</td></tr>";
+  }
+}
+
+function renderLeaderboard(data){
+  let html = "";
+  let rank = 1;
+  data.forEach(d=>{
+    const [name,school] = (d.key||"").split(" : ");
+    const ts = d.timestamp?.toDate ? d.timestamp.toDate().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : "";
+    const highlightClass = (d.key === currentUserKey) ? "currentUser" : "";
+    let medalEmoji = "✨";
+    if(rank===1) medalEmoji="🥇";
+    else if(rank===2) medalEmoji="🥈";
+    else if(rank===3) medalEmoji="🥉";
+
+    html += `<tr class="${highlightClass}">
+      <td><span class="medal" onclick="confetti({particleCount:150,spread:70,origin:{y:0.6}})">${medalEmoji} ${rank}</span></td>
+      <td>${name||""}</td>
+      <td>${school||""}</td>
+      <td>${d.score||0}</td>
+      <td>${ts}</td>
+    </tr>`;
+    rank++;
+  });
+  leaderboardTable.innerHTML = html;
+}
+
+// Initial load
+updateLeaderboardWindow();
+
+// Block right-click / copy / paste
+document.addEventListener('contextmenu', e=>{ e.preventDefault(); showAlert("Right Click Blocked!"); });
+document.addEventListener('copy', e=>{ e.preventDefault(); showAlert("Copy Blocked!"); });
+document.addEventListener('cut', e=>{ e.preventDefault(); showAlert("Cut Blocked!"); });
+document.addEventListener('paste', e=>{ e.preventDefault(); showAlert("Paste Blocked!"); });
+document.addEventListener('keydown', e=>{
+  if(e.key==='F12' || 
+    (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) ||
+    (e.ctrlKey && e.key==='U')){
+    e.preventDefault();
+    showAlert("DevTools Blocked!");
+  }
+});
+</script>
+</body>
+</html>
